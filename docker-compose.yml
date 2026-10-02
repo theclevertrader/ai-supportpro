@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: supportpro_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: supportpro_user
+      POSTGRES_PASSWORD: supportpro_secure_password_2026
+      POSTGRES_DB: ai_supportpro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportpro_user -d ai_supportpro"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: supportpro_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: supportpro_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DEBUG: "False"
+      DATABASE_URL: postgresql+asyncpg://supportpro_user:supportpro_secure_password_2026@postgres:5432/ai_supportpro
+      REDIS_URL: redis://redis:6379/0
+      AUTH_SECRET: "prod-secret-change-in-real-deployment-min-32-chars-long"
+      DEFAULT_LLM_PROVIDER: "mock"
+      CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: supportpro_frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE: "http://localhost:8000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  redisdata:
