@@ -3,18 +3,29 @@
 > **Smart Support. Happier Customers.**  
 > *Production-Ready, Multi-Tenant AI Customer Support SaaS Platform with Grounded RAG, Verifiable Citations, and Deterministic Human Escalation.*
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Stars](https://img.shields.io/github/stars/theclevertrader/ai-supportpro?style=social)](https://github.com/theclevertrader/ai-supportpro/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/theclevertrader/ai-supportpro?style=social)](https://github.com/theclevertrader/ai-supportpro/network/members)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/theclevertrader/ai-supportpro/pulls)
 [![Backend Tests](https://img.shields.io/badge/Backend%20Tests-17%20Passed-10b981.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11-38bdf8.svg)]()
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-00f0ff.svg)]()
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg)]()
-[![Vite](https://img.shields.io/badge/Vite-7.3-646cff.svg)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6.svg)]()
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg)]()
 
 <br />
 
 <div align="center">
-  <img src="docs/screenshots/dashboard.png" alt="AI SupportPro Enterprise Dashboard" width="100%" style="border-radius: 8px;" />
+  <img src="docs/screenshots/dashboard.png" alt="AI SupportPro Enterprise Dashboard" width="100%" style="border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+  
+  <br /><br />
+  
+  ⭐ **If you find AI SupportPro valuable, please star this repository! It helps the project reach more engineers.** ⭐
+  
+  <br />
+  
+  [Report Bug](https://github.com/theclevertrader/ai-supportpro/issues) • [Request Feature](https://github.com/theclevertrader/ai-supportpro/issues) • [Documentation](docs/interview-guide.md) • [Contributing](CONTRIBUTING.md)
 </div>
 
 ---
@@ -37,8 +48,8 @@ When customers request refunds, report broken products, ask out-of-scope inquiri
                                               |  Public Widget Key
                                               v
                             +-----------------+------------------+
-                            |         Next.js 14 Frontend        |
-                            |   React 18 / TypeScript / CSS UI   |
+                            |       Vite 7 + React 19 Frontend |
+                            |   React 19 / TypeScript / CSS UI |
                             +-----------------+------------------+
                                               |  REST / SSE API
                                               v
