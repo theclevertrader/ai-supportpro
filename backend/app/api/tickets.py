@@ -46,37 +46,68 @@ async def list_tickets(
     return result.scalars().all()
 
 
+import hmac
+import hashlib
+from app.core.config import settings
+
+
+def generate_ticket_token(ticket_id: str, customer_email: str, tenant_id: str) -> str:
+    """Generates an HMAC-SHA256 signed access token for a customer ticket."""
+    msg = f"{ticket_id}:{customer_email.lower().strip()}:{tenant_id}"
+    return hmac.new(settings.AUTH_SECRET.encode("utf-8"), msg.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+
+
 @router.get("/public/lookup/{ticket_id}")
 async def public_ticket_lookup(
     ticket_id: str,
     widget_key: str = Query(..., description="Tenant public widget key"),
-    customer_email: str = Query(..., description="Customer email for identity verification"),
+    customer_email: Optional[str] = Query(None, description="Customer email for identity verification"),
+    ticket_token: Optional[str] = Query(None, description="Signed cryptographic ticket access token"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Public customer ticket lookup.
-    Requires widget_key and customer email to prevent unauthorized data exposure.
-    Only returns the customer's own ticket and non-internal notes.
+    Hardened customer ticket lookup.
+    Requires widget_key and either:
+    1. Cryptographic ticket_token (tamper-proof signed session token), OR
+    2. customer_email matching the ticket owner.
+    Prevents ticket enumeration, hides internal agent notes, and returns signed access token.
     """
+    if not customer_email and not ticket_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either customer_email or ticket_token must be provided for ticket verification."
+        )
+
     tenant_res = await db.execute(select(Tenant).where(Tenant.widget_key == widget_key, Tenant.is_active == True))
     tenant = tenant_res.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Invalid widget key.")
 
     stmt = (
-        select(Ticket)
+        select(Ticket, Customer)
         .join(Customer, Ticket.customer_id == Customer.id)
         .where(
             Ticket.id == ticket_id,
-            Ticket.tenant_id == tenant.id,
-            Customer.email == customer_email.lower().strip()
+            Ticket.tenant_id == tenant.id
         )
         .options(selectinload(Ticket.notes))
     )
     result = await db.execute(stmt)
-    ticket = result.scalar_one_or_none()
-    if not ticket:
+    row = result.first()
+    if not row:
         raise HTTPException(status_code=404, detail="Ticket not found or customer verification failed.")
+
+    ticket, customer = row
+
+    expected_token = generate_ticket_token(ticket.id, customer.email, tenant.id)
+
+    # Validate token or email
+    if ticket_token:
+        if not hmac.compare_digest(ticket_token.strip(), expected_token):
+            raise HTTPException(status_code=404, detail="Invalid ticket access token.")
+    elif customer_email:
+        if customer.email.lower().strip() != customer_email.lower().strip():
+            raise HTTPException(status_code=404, detail="Ticket not found or customer verification failed.")
 
     # Filter out internal notes - only expose customer-visible notes
     public_notes = [n for n in ticket.notes if not n.is_internal]
@@ -90,6 +121,7 @@ async def public_ticket_lookup(
         "category": ticket.category.value,
         "created_at": ticket.created_at,
         "updated_at": ticket.updated_at,
+        "ticket_token": expected_token,
         "notes": [
             {
                 "id": n.id,

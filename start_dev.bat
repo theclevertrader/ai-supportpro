@@ -1,7 +1,7 @@
 @echo off
-title AI SupportPro - Dev Server
+title AI SupportPro
+cd /d "%~dp0"
 echo ========================================================
-echo   Starting AI SupportPro (Backend & Frontend)
+echo   Launching AI SupportPro...
 echo ========================================================
 python run_dev.py
-pause

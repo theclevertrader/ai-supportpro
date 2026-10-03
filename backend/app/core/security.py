@@ -1,8 +1,30 @@
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Union
+import re
 from jose import jwt, JWTError
 from app.core.config import settings
+
+
+def validate_password_strength(password: str) -> None:
+    """
+    Enforces production enterprise password complexity:
+    - Minimum 8 characters
+    - At least one uppercase letter (A-Z)
+    - At least one lowercase letter (a-z)
+    - At least one number (0-9)
+    - At least one special symbol (!@#$%^&*...)
+    """
+    if not password or len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long.")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Password must contain at least one uppercase letter (A-Z).")
+    if not re.search(r"[a-z]", password):
+        raise ValueError("Password must contain at least one lowercase letter (a-z).")
+    if not re.search(r"\d", password):
+        raise ValueError("Password must contain at least one number (0-9).")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>\-_+=~`]", password):
+        raise ValueError("Password must contain at least one special character (!@#$%^&*...).")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

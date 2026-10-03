@@ -15,6 +15,7 @@ from app.models.customer import Customer
 from app.models.document import Document, DocumentType, DocumentStatus, KnowledgeChunk
 from app.models.ticket import Ticket, TicketStatus, TicketPriority, TicketCategory
 from app.schemas.auth import UserCreate, UserLogin, Token, UserResponse
+from app.core.config import settings
 from app.api.deps import get_current_user, security_scheme
 from app.services.llm.factory import get_llm_provider
 from app.services.rag.chunker import split_text_into_chunks
@@ -248,7 +249,14 @@ async def seed_demo_tenant(db: AsyncSession = Depends(get_db)):
     """
     Provisions a comprehensive 'Acme Store' demonstration tenant complete with
     knowledge documents (Shipping, Refund, FAQ, Warranty), sample tickets, and an active owner.
+    Disabled in production environments to protect tenant isolation and credentials.
     """
+    if settings.APP_ENV.lower() == "production" or not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo provisioning endpoint is disabled in production environments."
+        )
+
     demo_slug = "acme-store"
     existing_tenant_res = await db.execute(select(Tenant).where(Tenant.slug == demo_slug))
     existing_tenant = existing_tenant_res.scalar_one_or_none()
@@ -337,6 +345,16 @@ async def seed_demo_tenant(db: AsyncSession = Depends(get_db)):
                 "This warranty covers defects in materials and craftsmanship under normal consumer usage. "
                 "Accidental liquid damage, physical drops, and unauthorized third-party repairs void the warranty. "
                 "For warranty claims, customers should contact support with device serial numbers."
+            )
+        },
+        {
+            "title": "Order Tracking & Delivery Status FAQ",
+            "type": DocumentType.FAQ,
+            "content": (
+                "Customers can track their orders 24/7 by navigating to the Orders Tracking section. "
+                "Every dispatched order is assigned a unique tracking number sent via email within 24 hours of package departure. "
+                "Real-time courier tracking updates from FedEx and DHL are refreshed every 4 hours. "
+                "If you need help tracking an order, simply provide your order number to support for an instant status update."
             )
         }
     ]

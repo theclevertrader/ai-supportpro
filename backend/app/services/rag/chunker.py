@@ -5,8 +5,14 @@ from typing import List, Dict, Any
 def split_text_into_chunks(
     text: str,
     chunk_size_words: int = 200,
-    overlap_words: int = 30
+    overlap_words: int = 30,
+    max_tokens: int = None,
+    overlap: int = None
 ) -> List[Dict[str, Any]]:
+    if max_tokens is not None:
+        chunk_size_words = max(10, max_tokens // 4)
+    if overlap is not None:
+        overlap_words = max(2, overlap // 4)
     """
     Splits input text into overlapping chunks while preserving sentence integrity.
     Returns list of dicts with 'content', 'index', 'word_count', and approx 'token_count'.

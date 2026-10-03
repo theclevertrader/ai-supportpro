@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from app.models.user import UserRole
+from app.core.security import validate_password_strength
 
 
 class UserBase(BaseModel):
@@ -14,6 +15,12 @@ class UserCreate(UserBase):
     tenant_name: str
     tenant_slug: str
     role: Optional[UserRole] = UserRole.TENANT_OWNER
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        validate_password_strength(v)
+        return v
 
 
 class UserLogin(BaseModel):

@@ -7,7 +7,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/theclevertrader/ai-supportpro?style=social)](https://github.com/theclevertrader/ai-supportpro/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/theclevertrader/ai-supportpro?style=social)](https://github.com/theclevertrader/ai-supportpro/network/members)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/theclevertrader/ai-supportpro/pulls)
-[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-17%20Passed-10b981.svg)]()
+[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-25%20Passed-10b981.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11-38bdf8.svg)]()
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-00f0ff.svg)]()
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg)]()
@@ -170,15 +170,33 @@ python -m pytest tests/ -v
 
 Output:
 ```text
-tests/test_backend.py::test_health_check PASSED
-tests/test_backend.py::test_seed_demo_tenant_and_login PASSED
-tests/test_backend.py::test_customer_chat_and_citations PASSED
-tests/test_backend.py::test_customer_escalation_on_refund_complaint PASSED
-tests/test_backend.py::test_multi_tenant_isolation PASSED
-tests/test_backend.py::test_unknown_question_safety_escalation PASSED
-tests/test_backend.py::test_ticket_lifecycle_and_notes PASSED
+tests/test_backend.py::test_health_check PASSED                          [  4%]
+tests/test_backend.py::test_seed_demo_tenant_and_login PASSED            [  8%]
+tests/test_backend.py::test_customer_chat_and_citations PASSED           [ 12%]
+tests/test_backend.py::test_customer_escalation_on_refund_complaint PASSED [ 16%]
+tests/test_backend.py::test_multi_tenant_isolation PASSED                [ 20%]
+tests/test_backend.py::test_unknown_question_safety_escalation PASSED    [ 24%]
+tests/test_backend.py::test_ticket_lifecycle_and_notes PASSED            [ 28%]
+tests/test_backend.py::test_security_headers_and_cors PASSED             [ 32%]
+tests/test_backend.py::test_ssrf_validator_blocks_internal_and_metadata_ips PASSED [ 36%]
+tests/test_backend.py::test_chat_sse_streaming PASSED                    [ 40%]
+tests/test_backend.py::test_account_lockout_after_failed_attempts PASSED [ 44%]
+tests/test_backend.py::test_token_revocation_logout PASSED               [ 48%]
+tests/test_backend.py::test_magic_byte_file_upload_validation PASSED     [ 52%]
+tests/test_backend.py::test_xss_input_sanitization PASSED                [ 56%]
+tests/test_backend.py::test_audit_logging_and_query PASSED               [ 60%]
+tests/test_backend.py::test_webhook_hmac_sha256_verification PASSED      [ 64%]
+tests/test_backend.py::test_customer_public_ticket_lookup PASSED         [ 68%]
+tests/test_backend.py::test_portal_dashboard_requires_authentication PASSED [ 72%]
+tests/test_backend.py::test_portal_dashboard_authorized_by_jwt PASSED    [ 76%]
+tests/test_backend.py::test_portal_cross_tenant_spoofing_rejected PASSED [ 80%]
+tests/test_backend.py::test_seed_demo_disabled_in_production PASSED      [ 84%]
+tests/test_backend.py::test_portal_auth_login_and_logout PASSED          [ 88%]
+tests/test_backend.py::test_password_policy_enforcement PASSED           [ 92%]
+tests/test_backend.py::test_duplicate_file_upload_detection_and_normalization PASSED [ 96%]
+tests/test_backend.py::test_signed_ticket_access_token_lookup PASSED     [100%]
 
-============================== 7 passed in 5.59s ==============================
+============================= 25 passed in 20.26s =============================
 ```
 
 ---

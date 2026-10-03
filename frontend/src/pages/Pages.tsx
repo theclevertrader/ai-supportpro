@@ -9,7 +9,9 @@ import { KnowledgeBase } from "../components/KnowledgeBase";
 import { InfraStatus, SecurityPanel, WorkspacePanel } from "../components/SecurityPanel";
 import { TicketTable } from "../components/TicketTable";
 import { AsyncBoundary, PageHeader, Panel, Segmented, Skeleton } from "../components/ui";
+import { useApp } from "../context/AppContext";
 import { useAsync } from "../hooks/hooks";
+import { AccountSettingsPanel } from "../components/AccountSettingsPanel";
 import { AIToolView, type AITool } from "./AIToolsPage";
 import { LiveChat } from "./LiveChatPage";
 
@@ -91,16 +93,35 @@ export function AnalyticsPage() {
   );
 }
 
-const TABS = ["Security", "Embed", "AI Infrastructure", "Workspace"] as const;
+const TABS = ["Account", "Security", "Embed", "AI Infrastructure", "Workspace"] as const;
 export function SettingsPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Security");
+  const { settingsTab, setSettingsTab } = useApp();
+  const currentTab = (TABS.includes(settingsTab as any) ? settingsTab : "Account") as (typeof TABS)[number];
   const state = useAsync(securityApi.get);
   return (
     <div className="space-y-4">
-      <PageHeader title="Settings" subtitle="Security, embeddable widget, AI infrastructure and workspace administration." actions={<Segmented label="Settings section" options={TABS} value={tab} onChange={setTab} />} />
-      <AsyncBoundary state={state} skeleton={<PageSkeleton />}>
-        {(d) => tab === "Security" ? <SecurityPanel data={d} /> : tab === "Embed" ? <EmbedWidget data={d.embed} /> : tab === "AI Infrastructure" ? <InfraStatus data={d} /> : <WorkspacePanel data={d} />}
-      </AsyncBoundary>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your profile, security posture, embeddable widget, and workspace configuration."
+        actions={<Segmented label="Settings section" options={TABS} value={currentTab} onChange={(t) => setSettingsTab(t)} />}
+      />
+      {currentTab === "Account" ? (
+        <AccountSettingsPanel />
+      ) : (
+        <AsyncBoundary state={state} skeleton={<PageSkeleton />}>
+          {(d) =>
+            currentTab === "Security" ? (
+              <SecurityPanel data={d} />
+            ) : currentTab === "Embed" ? (
+              <EmbedWidget data={d.embed} />
+            ) : currentTab === "AI Infrastructure" ? (
+              <InfraStatus data={d} />
+            ) : (
+              <WorkspacePanel data={d} />
+            )
+          }
+        </AsyncBoundary>
+      )}
     </div>
   );
 }

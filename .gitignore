@@ -106,3 +106,4 @@ scratch/
 tmp/
 temp/
 extracted_zip/
+*.zip

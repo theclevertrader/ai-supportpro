@@ -31,10 +31,10 @@
 ### 2.1 Monolith vs. Microservices Evaluation
 - **Anti-Pattern Warning:** Building microservices at this stage would introduce distributed transaction overhead, network serialization latency, redundant service discovery, and complex Kubernetes orchestration without adding business value.
 - **Recommended Architectural Pattern:** **Modular Monolith** with clean domain boundaries:
-  - **Frontend:** Next.js (App Router, React 19 / TypeScript, Tailwind/Vanilla CSS design system, Server/Client components, embeddable Web Component / iframe chat widget).
+  - **Frontend:** Vite 7 + React 19 (Strict TypeScript, Vanilla/Glassmorphism CSS design system, responsive single-page portal, embeddable chat widget).
   - **Backend Core & AI Engine:** FastAPI (Python 3.11, Async, Pydantic v2, SQLAlchemy 2.0 / Alembic, native RAG vector search, LLM Provider Abstraction).
   - **Communication:** RESTful JSON APIs + Server-Sent Events (SSE) for streaming chat responses.
-  - **Task Queue / Cache:** Redis for async background jobs (document chunking, embedding generation, webhook delivery) with an in-process fallback worker for zero-config local runs.
+  - **Task Queue & Background Processing:** Native FastAPI async execution & `BackgroundTasks` for zero-latency in-process operations (audit trail logging, customer webhook dispatch, document processing). Redis + Celery is designated as the future scale-out architecture for distributed multi-node clusters.
 
 ### 2.2 Domain Boundaries
 1. `auth_tenant`: Multi-tenant registration, workspace management, JWT/session authentication, RBAC policy enforcement.
@@ -49,12 +49,11 @@
 
 ## 3. Dependency Assessment
 
-### 3.1 Frontend Dependencies (Next.js / Node)
-- **Framework:** `next` (v14/v15), `react`, `react-dom`
-- **Typing & Validation:** `typescript`, `@types/react`, `zod`
-- **UI & Icons:** `lucide-react`, custom CSS tokens (dark modern SaaS aesthetic matching the infographic)
-- **Markdown & Citations:** `react-markdown`, `remark-gfm`
-- **Charts:** `recharts` for verified, non-fictional analytics rendering
+### 3.1 Frontend Dependencies (Vite 7 / React 19 / Node)
+- **Framework & Bundler:** `vite` (v7), `react` (v19), `react-dom` (v19)
+- **Typing & Validation:** `typescript` (v5.9), `@types/react`
+- **UI & Icons:** `lucide-react`, custom Vanilla CSS tokens (dark modern SaaS aesthetic matching the dashboard design)
+- **Charts:** Lightweight Canvas & SVG gauge/line components for verified, non-fictional telemetry rendering
 
 ### 3.2 Backend Dependencies (Python 3.11 / FastAPI)
 - **API Framework:** `fastapi`, `uvicorn[standard]`, `pydantic>=2.0`
@@ -155,7 +154,7 @@ class BaseLLMProvider(ABC):
 ## 8. Production-Readiness Assessment
 
 ### 8.1 Required Artifacts for Production Grade
-- `Dockerfile` for Next.js frontend (multi-stage build, standalone node server).
+- `Dockerfile` for Vite 7 / React 19 frontend (multi-stage build with Nginx reverse proxy).
 - `Dockerfile` for FastAPI backend (slim python, non-root user, gunicorn/uvicorn worker).
 - `docker-compose.yml` orchestrating Frontend, Backend, PostgreSQL + pgvector, and Redis.
 - Comprehensive `.env.example` detailing all production and mock configuration keys.

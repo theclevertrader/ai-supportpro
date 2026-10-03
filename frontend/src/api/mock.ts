@@ -5,7 +5,7 @@
  */
 import type {
   AIToolsDTO, AnalyticsDTO, ChatAnswer, ChartSeries, ConversationDTO, CustomerDTO, DashboardDTO,
-  KBDTO, MetricDTO, NotificationDTO, RangeKey, SecurityDTO, TicketDTO,
+  KBDTO, MetricDTO, NotificationDTO, RangeKey, SecurityDTO, TicketDTO, UserProfileDTO,
 } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -55,8 +55,19 @@ const conversations: ConversationDTO[] = [
   },
 ];
 
+const mockUserProfile: UserProfileDTO = {
+  id: "u1",
+  name: "Acme Support Admin",
+  firstName: "Acme",
+  email: "admin@acmestore.com",
+  role: "Tenant Admin",
+  phone: "+1 (555) 234-5678",
+  title: "Lead Support Operations",
+  twoFactorEnabled: true,
+};
+
 const dashboard: DashboardDTO = {
-  user: { name: "Shafaan Tariq", firstName: "Shafaan", role: "Admin" },
+  user: { name: "Acme Support Admin", firstName: "Acme", role: "Tenant Admin" },
   ticketBadge: 22,
   aiHandledPct: 41.2,
   metrics: [
@@ -82,17 +93,16 @@ const dashboard: DashboardDTO = {
   ],
   conversations: conversations.slice(0, 4).map(({ messages: _m, ...rest }) => rest),
   performance: [
-    { id: "acc", label: "Response Accuracy", value: 98, tone: "cyan" },
-    { id: "int", label: "Intent Recognition", value: 93, tone: "warn" },
-    { id: "gro", label: "Grounding Rate", value: 87, tone: "mint" },
-    { id: "cs", label: "Customer Satisfaction", value: 96, tone: "mint" },
+    { id: "acc", label: "Grounded Accuracy", value: 89, tone: "cyan" },
+    { id: "int", label: "Escalation Control", value: 85, tone: "warn" },
+    { id: "gro", label: "Knowledge Grounding", value: 87, tone: "mint" },
+    { id: "cs", label: "Resolution Rate", value: 82, tone: "mint" },
   ],
   feed: [
-    { id: "f1", kind: "ticket", title: "New ticket #TK-1024", detail: "Refund request from Sarah", time: "2m ago" },
-    { id: "f2", kind: "ai", title: "AI response generated", detail: "For ticket #TK-1023", time: "5m ago" },
-    { id: "f3", kind: "kb", title: "Knowledge base article added", detail: "Shipping Policy Guide", time: "12m ago" },
-    { id: "f4", kind: "customer", title: "New customer registered", detail: "VIP Retail Account", time: "18m ago" },
-    { id: "f5", kind: "backup", title: "System backup completed", detail: "All data synced successfully", time: "1h ago" },
+    { id: "f1", kind: "ticket", title: "Ticket #TK-1024 Created", detail: "Refund - Order delayed delivery", time: "2m ago" },
+    { id: "f2", kind: "kb", title: "Policy Document Uploaded", detail: "Shipping Policy Guide (5 chunks)", time: "12m ago" },
+    { id: "f3", kind: "customer", title: "Customer Session Active", detail: "Live chat initiated via widget", time: "18m ago" },
+    { id: "f4", kind: "security", title: "Audit Verification", detail: "SOC2 Compliance Log Clean", time: "1h ago" },
   ],
 };
 
@@ -198,7 +208,7 @@ const security: SecurityDTO = {
     { id: "ent", name: "Enterprise Store", plan: "Enterprise", region: "ap-south-1" },
   ],
   members: [
-    { id: "m1", name: "Shafaan Tariq", email: "shafaan@acme-store.com", role: "Owner" },
+    { id: "m1", name: "Acme Owner", email: "admin@acmestore.com", role: "Owner" },
     { id: "m2", name: "Priya Nair", email: "priya@acme-store.com", role: "Admin" },
     { id: "m3", name: "Daniel Cho", email: "daniel@acme-store.com", role: "Agent" },
     { id: "m4", name: "Marcus Webb", email: "marcus@acme-store.com", role: "Agent" },
@@ -315,6 +325,21 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   let out: unknown;
 
   if (p === "/api/dashboard") out = dashboard;
+  else if (p === "/api/user/profile" && method === "GET") out = mockUserProfile;
+  else if (p === "/api/user/profile" && method === "PUT") {
+    if (body) {
+      Object.assign(mockUserProfile, body);
+      if (body.name) {
+        mockUserProfile.firstName = String(body.name).split(" ")[0];
+        dashboard.user.name = String(body.name);
+        dashboard.user.firstName = mockUserProfile.firstName;
+      }
+    }
+    out = mockUserProfile;
+  }
+  else if (p === "/api/user/change-password") out = { ok: true, message: "Password updated successfully." };
+  else if (p === "/api/auth/logout") out = { ok: true, message: "Successfully signed out." };
+  else if (p === "/api/auth/login") out = { ok: true, user: mockUserProfile };
   else if (p === "/api/conversations") out = conversations;
   else if (p === "/api/tickets") out = tickets;
   else if (p === "/api/customers") out = customers;

@@ -1,7 +1,8 @@
+import os
 import json
 from typing import List, Union
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import Field, field_validator, ConfigDict, AliasChoices
 
 
 class Settings(BaseSettings):
@@ -39,7 +40,7 @@ class Settings(BaseSettings):
     ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
 
     # RAG Settings
-    SIMILARITY_THRESHOLD: float = 0.35
+    SIMILARITY_THRESHOLD: float = float(os.getenv("RAG_SIMILARITY_THRESHOLD") or os.getenv("SIMILARITY_THRESHOLD") or "0.35")
     MAX_CONTEXT_CHUNKS: int = 4
     CHUNK_SIZE_TOKENS: int = 500
     CHUNK_OVERLAP_TOKENS: int = 50
@@ -48,6 +49,8 @@ class Settings(BaseSettings):
     EMAIL_PROVIDER: str = "mock"
     SUPPORT_EMAIL_ADDRESS: str = "support@example.com"
     WHATSAPP_PROVIDER: str = "mock"
+    WHATSAPP_VERIFY_TOKEN: str = ""
+    WHATSAPP_APP_SECRET: str = ""
 
     # Cost Tracking (USD per 1k tokens estimate)
     INPUT_TOKEN_COST_USD: float = 0.00015 / 1000

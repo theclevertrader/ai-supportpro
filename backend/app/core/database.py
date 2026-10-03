@@ -46,15 +46,5 @@ async def init_db() -> None:
     import app.models.analytics  # noqa
     import app.models.audit_log  # noqa
 
-    from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Safe migration for existing SQLite tables
-        try:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0"))
-        except Exception:
-            pass
-        try:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN locked_until DATETIME"))
-        except Exception:
-            pass

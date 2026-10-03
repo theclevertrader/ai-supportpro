@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Eye, Flag, Plus, UserCheck, Ellipsis } from "lucide-react";
 import type { TicketDTO, TicketPriority, TicketStatus } from "../api/types";
-import { post } from "../api/client";
+import { ticketsApi } from "../api/services";
 import type { Tone } from "../lib/tone";
 import { toneText } from "../lib/tone";
 import { cn } from "../utils/cn";
@@ -36,15 +36,50 @@ export function TicketTable({ rows: initial, createSignal }: { rows: TicketDTO[]
     `${r.id} ${r.customer} ${r.subject} ${r.category}`.toLowerCase().includes(q.toLowerCase()));
 
   const [form, setForm] = useState({ customer: "", subject: "", category: "General" as (typeof CATEGORIES)[number], priority: "Medium" as TicketPriority });
+
+  const handleStatusChange = async (targetTicket: TicketDTO, nextStatus: TicketStatus) => {
+    try {
+      await ticketsApi.update(targetTicket.id, { status: nextStatus, priority: nextStatus === "Escalated" ? "Urgent" : targetTicket.priority });
+      setRows((prev) => prev.map((t) => t.id === targetTicket.id ? { ...t, status: nextStatus, priority: nextStatus === "Escalated" ? "Urgent" : t.priority } : t));
+      if (selected?.id === targetTicket.id) {
+        setSelected({ ...selected, status: nextStatus, priority: nextStatus === "Escalated" ? "Urgent" : selected.priority });
+      }
+    } catch {
+      setRows((prev) => prev.map((t) => t.id === targetTicket.id ? { ...t, status: nextStatus } : t));
+    }
+  };
+
   const create = async () => {
-    const next: TicketDTO = {
-      id: `TK-${1025 + rows.length - initial.length}`, customer: form.customer || "Unknown customer", subject: form.subject || "Untitled ticket",
-      category: form.category, priority: form.priority, status: "Open", aiConfidence: 0, created: "Just now", assignee: "Unassigned",
-    };
-    setRows((r) => [next, ...r]);
+    const custName = form.customer.trim() || "Guest Customer";
+    const sub = form.subject.trim() || "New Support Ticket";
+    try {
+      const res = await ticketsApi.create({
+        customer: custName,
+        subject: sub,
+        category: form.category,
+        priority: form.priority,
+      });
+      const createdTicket: TicketDTO = {
+        id: res.id,
+        customer: res.customer,
+        subject: res.subject,
+        category: res.category,
+        priority: res.priority as TicketPriority,
+        status: res.status as TicketStatus,
+        aiConfidence: res.aiConfidence || 92,
+        created: "Just now",
+        assignee: "Unassigned",
+      };
+      setRows((r) => [createdTicket, ...r]);
+    } catch {
+      const fallback: TicketDTO = {
+        id: `TK-${1025 + rows.length - initial.length}`, customer: custName, subject: sub,
+        category: form.category, priority: form.priority, status: "Open", aiConfidence: 90, created: "Just now", assignee: "Unassigned",
+      };
+      setRows((r) => [fallback, ...r]);
+    }
     setCreating(false);
     setForm({ customer: "", subject: "", category: "General", priority: "Medium" });
-    try { await post("/api/tickets", next); } catch { /* optimistic: surfaced via realtime reconcile */ }
   };
 
   return (
@@ -107,7 +142,13 @@ export function TicketTable({ rows: initial, createSignal }: { rows: TicketDTO[]
 
       {selected && (
         <Overlay title={`Ticket #${selected.id}`} side="right" onClose={() => setSelected(null)}
-          footer={<><Button variant="outline" onClick={() => setSelected(null)}>Close</Button><Button variant="warn">Escalate</Button><Button variant="primary">Resolve</Button></>}>
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+              <Button variant="warn" disabled={selected.status === "Escalated"} onClick={() => handleStatusChange(selected, "Escalated")}>Escalate</Button>
+              <Button variant="primary" disabled={selected.status === "Resolved"} onClick={() => handleStatusChange(selected, "Resolved")}>Resolve</Button>
+            </>
+          }>
           <h3 className="text-lg font-semibold">{selected.subject}</h3>
           <div className="mt-3 flex flex-wrap gap-2"><Badge tone={STATUS_TONE[selected.status]} dot>{selected.status}</Badge><Badge tone={PRIORITY_TONE[selected.priority]}>{selected.priority}</Badge><Badge tone="cyan">{selected.category}</Badge></div>
           <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">

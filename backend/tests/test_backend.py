@@ -376,7 +376,8 @@ async def test_webhook_hmac_sha256_verification():
     import hmac
     import hashlib
     import json
-    from app.api.integrations import WHATSAPP_APP_SECRET
+    from app.api.integrations import _get_whatsapp_credentials
+    _, WHATSAPP_APP_SECRET = _get_whatsapp_credentials()
 
     payload = json.dumps({"entry": [{"id": "wa_123", "changes": []}]}).encode("utf-8")
 
@@ -440,6 +441,206 @@ async def test_customer_public_ticket_lookup():
             f"/api/v1/tickets/public/lookup/{ticket_id}?widget_key={widget_key}&customer_email=intruder@attacker.com"
         )
         assert wrong_email_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_portal_dashboard_requires_authentication():
+    """Verifies that portal endpoints strictly require JWT Bearer authentication."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/dashboard")
+        assert resp.status_code == 401
+        assert "detail" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_portal_dashboard_authorized_by_jwt():
+    """Verifies that authenticated user's JWT cryptographically authorizes tenant data."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        # Login
+        login_resp = await client.post("/api/v1/auth/login", json={
+            "email": "admin@acmestore.com",
+            "password": "Password123!"
+        })
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+
+        # Request dashboard with Bearer token
+        dash_resp = await client.get("/api/dashboard", headers={"Authorization": f"Bearer {token}"})
+        assert dash_resp.status_code == 200
+        data = dash_resp.json()
+        assert "metrics" in data
+        assert "user" in data
+        assert data["user"]["email"] == "admin@acmestore.com"
+
+
+@pytest.mark.asyncio
+async def test_portal_cross_tenant_spoofing_rejected():
+    """Verifies that an authenticated user cannot access another tenant by passing a spoofed X-Tenant-ID."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        login_resp = await client.post("/api/v1/auth/login", json={
+            "email": "admin@acmestore.com",
+            "password": "Password123!"
+        })
+        token = login_resp.json()["access_token"]
+
+        # Attempt to spoof tenant
+        spoof_resp = await client.get(
+            "/api/dashboard",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Tenant-ID": "malicious-foreign-tenant-id"
+            }
+        )
+        assert spoof_resp.status_code == 403
+        assert "Unauthorized cross-tenant request" in spoof_resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_seed_demo_disabled_in_production():
+    """Verifies that /auth/seed-demo is rejected with 404 in production environment."""
+    from app.core.config import settings
+    orig_env = settings.APP_ENV
+    try:
+        settings.APP_ENV = "production"
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/api/v1/auth/seed-demo")
+            assert resp.status_code == 404
+            assert "disabled in production" in resp.json()["detail"]
+    finally:
+        settings.APP_ENV = orig_env
+
+
+@pytest.mark.asyncio
+async def test_portal_auth_login_and_logout():
+    """Verifies /api/auth/login issues token and /api/auth/logout revokes it."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        # Portal login
+        login_resp = await client.post("/api/auth/login", json={
+            "email": "admin@acmestore.com",
+            "password": "Password123!"
+        })
+        assert login_resp.status_code == 200
+        token_data = login_resp.json()
+        assert token_data["ok"] is True
+        token = token_data["access_token"]
+
+        # Access profile with token
+        prof_resp = await client.get("/api/user/profile", headers={"Authorization": f"Bearer {token}"})
+        assert prof_resp.status_code == 200
+        assert prof_resp.json()["email"] == "admin@acmestore.com"
+
+        # Logout to revoke
+        logout_resp = await client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        assert logout_resp.status_code == 200
+
+        # Post-logout profile request must be rejected (revoked)
+        revoked_resp = await client.get("/api/user/profile", headers={"Authorization": f"Bearer {token}"})
+        assert revoked_resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_password_policy_enforcement():
+    """Verifies that weak passwords are systematically rejected by registration and change-password."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        # Weak password (short)
+        short_resp = await client.post("/api/v1/auth/register", json={
+            "tenant_name": "Weak Corp",
+            "tenant_slug": "weak-corp-1",
+            "email": "weak1@test.com",
+            "password": "Short1!",
+            "full_name": "Weak User"
+        })
+        assert short_resp.status_code == 422
+
+        # Weak password (no special char)
+        no_sym_resp = await client.post("/api/v1/auth/register", json={
+            "tenant_name": "Weak Corp",
+            "tenant_slug": "weak-corp-2",
+            "email": "weak2@test.com",
+            "password": "Password1234",
+            "full_name": "Weak User"
+        })
+        assert no_sym_resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_duplicate_file_upload_detection_and_normalization():
+    """Verifies filename normalization and duplicate upload rejection via SHA-256."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        import uuid
+        uid = uuid.uuid4().hex[:6]
+        reg_resp = await client.post("/api/v1/auth/register", json={
+            "tenant_name": f"Upload Corp {uid}",
+            "tenant_slug": f"upload-corp-{uid}",
+            "email": f"uploader_{uid}@test.com",
+            "password": "Password123!",
+            "full_name": "Uploader Admin"
+        })
+        assert reg_resp.status_code == 201
+        token = reg_resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        file_payload = b"Company Privacy Policy text content with sufficient length for knowledge base indexing."
+
+        # First upload -> Success (200)
+        up1 = await client.post(
+            "/api/v1/knowledge/upload-file",
+            files={"file": ("../../malicious/path/privacy policy!.txt", file_payload, "text/plain")},
+            data={"title": "Privacy Policy Test"},
+            headers=headers
+        )
+        assert up1.status_code == 200
+
+        # Duplicate upload -> 409 Conflict
+        up2 = await client.post(
+            "/api/v1/knowledge/upload-file",
+            files={"file": ("privacy_policy_copy.txt", file_payload, "text/plain")},
+            data={"title": "Privacy Policy Copy"},
+            headers=headers
+        )
+        assert up2.status_code == 409
+        assert "Duplicate file detected" in up2.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_signed_ticket_access_token_lookup():
+    """Verifies that ticket can be retrieved securely using the returned signed ticket_token."""
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        seed_resp = await client.post("/api/v1/auth/seed-demo")
+        widget_key = seed_resp.json()["widget_key"]
+
+        # Escalate inquiry
+        chat_resp = await client.post("/api/v1/chat/message", json={
+            "widget_key": widget_key,
+            "customer_name": "Token Tester",
+            "customer_email": "token_test@customer.com",
+            "message": "My order arrived broken and defective, urgent refund needed."
+        })
+        assert chat_resp.status_code == 200
+        ticket_id = chat_resp.json()["ticket_id"]
+
+        # Lookup with email -> returns ticket_token
+        lookup1 = await client.get(
+            f"/api/v1/tickets/public/lookup/{ticket_id}?widget_key={widget_key}&customer_email=token_test@customer.com"
+        )
+        assert lookup1.status_code == 200
+        token_val = lookup1.json().get("ticket_token")
+        assert token_val is not None
+
+        # Lookup with ticket_token (no email needed)
+        lookup2 = await client.get(
+            f"/api/v1/tickets/public/lookup/{ticket_id}?widget_key={widget_key}&ticket_token={token_val}"
+        )
+        assert lookup2.status_code == 200
+        assert lookup2.json()["id"] == ticket_id
+
+        # Tampered ticket_token -> 404
+        tampered = await client.get(
+            f"/api/v1/tickets/public/lookup/{ticket_id}?widget_key={widget_key}&ticket_token=invalid_forged_token_12345"
+        )
+        assert tampered.status_code == 404
+
+
 
 
 

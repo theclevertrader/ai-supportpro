@@ -30,8 +30,8 @@ Customer support operations face a persistent trilemma: scaling 24/7 responsiven
                                         |  Public Widget Key
                                         v
                       +-----------------+------------------+
-                      |         Next.js 14 Frontend        |
-                      |   React 18 / TypeScript / CSS UI   |
+                      |       Vite 7 + React 19 Frontend |
+                      |   React 19 / TypeScript / CSS UI |
                       +-----------------+------------------+
                                         |  REST / SSE API
                                         v
@@ -64,11 +64,11 @@ Customer support operations face a persistent trilemma: scaling 24/7 responsiven
 ```
 
 ### Key Technologies:
-- **Frontend:** Next.js 14 (App Router), React 18, Strict TypeScript, Lucide Icons, Glassmorphism CSS.
+- **Frontend:** Vite 7, React 19, Strict TypeScript, Lucide Icons, Glassmorphism CSS design system.
 - **Backend:** FastAPI, Python 3.11, Pydantic v2, SQLAlchemy 2.0 (Async), Native Bcrypt.
 - **Database & Vectors:** PostgreSQL 15 with `pgvector` (production), SQLite + NumPy L2-normalized cosine engine (local development and automated testing).
 - **RAG & NLP:** Sliding-window token chunker, SSRF-guarded document/web parsers, citation mapper.
-- **DevOps & Containers:** Multi-stage Dockerfiles, Docker Compose (Frontend, Backend, PostgreSQL, Redis).
+- **DevOps & Containers:** Multi-stage Dockerfiles, Docker Compose (Frontend, Backend, PostgreSQL, optional Redis queue broker).
 
 ---
 
@@ -79,7 +79,7 @@ Customer support operations face a persistent trilemma: scaling 24/7 responsiven
 | **Multi-Tenancy** | Database-level `tenant_id` foreign keys + JWT claim enforcement on every query. | **PASS** (Automated isolation tests) |
 | **Grounded RAG** | Vector cosine similarity retrieval + strict prompt context bounding. | **PASS** (Zero hallucination on policy questions) |
 | **Source Citations** | Chunk metadata tracking (document title, section, similarity score). | **PASS** (Verifiable citation badges) |
-| **Human Escalation** | Keyword dispute analysis + similarity threshold fallbacks (`SIMILARITY_THRESHOLD = 0.35`). | **PASS** (Auto-ticket generation on broken/dispute items) |
+| **Human Escalation** | Keyword dispute analysis + similarity threshold fallbacks (`SIMILARITY_THRESHOLD = 0.65`). | **PASS** (Auto-ticket generation on broken/dispute items) |
 | **Ticketing Lifecycle** | Status state machine (`OPEN` -> `IN_PROGRESS` -> `RESOLVED`), priority scoring, internal notes. | **PASS** (Verified with notes & updates) |
 | **Account Lockout Policy** | 15-minute freeze on 5 consecutive bad password attempts defending against botnet attacks. | **PASS** (Tested with HTTP 423 Locked) |
 | **Token Revocation (Logout)**| In-memory sliding cryptographic token blacklist terminating sessions immediately. | **PASS** (Subsequent requests rejected 401) |
@@ -152,7 +152,7 @@ tests/test_backend.py::test_customer_public_ticket_lookup PASSED         [100%]
 ## 7. Future Engineering Roadmap
 
 - [x] Webhook signature verification for Meta WhatsApp Cloud API events (`X-Hub-Signature-256`).
-- [x] End-to-end streaming token generation using Server-Sent Events (SSE) in the Next.js widget (`/chat/stream`).
+- [x] End-to-end streaming token generation using Server-Sent Events (SSE) in the React widget (`/chat/stream`).
 - [x] Compliance Audit Log stream and account lockout defense.
 - [ ] Automated LLM-as-a-judge evaluation pipeline for monthly quality audits.
 

@@ -1,9 +1,11 @@
 import json
+import hashlib
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.tenant import Tenant
 from app.models.user import User, UserRole
 from app.models.document import Document, KnowledgeChunk, DocumentType, DocumentStatus
@@ -11,7 +13,8 @@ from app.schemas.knowledge import DocumentResponse, KnowledgeSearchRequest, Know
 from app.api.deps import get_current_tenant, require_roles
 from app.services.llm.factory import get_llm_provider
 from app.services.rag.chunker import split_text_into_chunks
-from app.services.rag.parsers import parse_pdf_bytes, sanitize_untrusted_text, fetch_website_content, validate_file_magic_bytes
+from app.services.rag.parsers import parse_pdf_bytes, sanitize_untrusted_text, fetch_website_content, validate_file_magic_bytes, normalize_filename
+from app.services.storage import get_storage_service
 from app.services.rag.vector_engine import VectorEngine
 from app.services.audit.logger import record_audit_log
 
@@ -89,19 +92,39 @@ async def upload_file_document(
     current_user: User = Depends(require_roles([UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN])),
     db: AsyncSession = Depends(get_db)
 ):
-    """Uploads and indexes a PDF or TXT file with MIME-type and size validation."""
+    """Uploads and indexes a PDF or TXT file with MIME-type, duplicate check, and size validation."""
     # 10MB limit
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size exceeds maximum 10MB limit.")
 
-    doc_title = title or file.filename or "Uploaded Document"
-    file_lower = (file.filename or "").lower()
+    raw_filename = file.filename or "uploaded_document.txt"
+    safe_filename = normalize_filename(raw_filename)
+    doc_title = title or safe_filename
+    file_lower = safe_filename.lower()
 
     # Magic byte validation
     is_valid, err_msg = validate_file_magic_bytes(contents, file_lower)
     if not is_valid:
         raise HTTPException(status_code=400, detail=f"File validation failure: {err_msg}")
+
+    # Duplicate detection via SHA-256 content hashing
+    file_hash = hashlib.sha256(contents).hexdigest()
+    dup_stmt = select(Document).where(
+        Document.tenant_id == tenant.id,
+        Document.file_path.like(f"%{file_hash}%")
+    )
+    dup_res = await db.execute(dup_stmt)
+    if dup_res.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Duplicate file detected: This document has already been uploaded to your knowledge base."
+        )
+
+    # Persist file via Storage Abstraction
+    storage = get_storage_service()
+    storage_key = f"{file_hash[:12]}_{safe_filename}"
+    saved_storage_path = await storage.save_file(tenant.id, storage_key, contents)
 
     if file_lower.endswith(".pdf"):
         extracted_text = parse_pdf_bytes(contents)
@@ -120,6 +143,7 @@ async def upload_file_document(
         tenant_id=tenant.id,
         title=doc_title,
         file_type=doc_type,
+        file_path=f"sha256:{file_hash}|{saved_storage_path}",
         status=DocumentStatus.PROCESSING
     )
     db.add(doc)
@@ -145,6 +169,25 @@ async def upload_file_document(
 
         doc.chunk_count = len(chunks)
         doc.status = DocumentStatus.PROCESSED
+
+        # Upload audit trail
+        await record_audit_log(
+            db=db,
+            tenant_id=tenant.id,
+            action="FILE_UPLOADED",
+            resource_type="document",
+            resource_id=doc.id,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            details={
+                "filename": safe_filename,
+                "size_bytes": len(contents),
+                "sha256": file_hash,
+                "document_id": doc.id,
+                "chunks": len(chunks)
+            }
+        )
+
         await db.commit()
         await db.refresh(doc)
         return doc
@@ -239,6 +282,6 @@ async def search_knowledge_base(
         query=data.query,
         llm_provider=llm,
         top_k=data.top_k or 4,
-        similarity_threshold=data.similarity_threshold or 0.35
+        similarity_threshold=data.similarity_threshold or settings.SIMILARITY_THRESHOLD
     )
     return results

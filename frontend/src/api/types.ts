@@ -49,7 +49,7 @@ export interface ConversationDTO {
   messages: ChatMessage[];
 }
 
-export type FeedKind = "ticket" | "ai" | "kb" | "customer" | "backup";
+export type FeedKind = "ticket" | "ai" | "kb" | "customer" | "backup" | "security" | "info";
 export interface FeedEvent { id: string; kind: FeedKind; title: string; detail: string; time: string }
 
 export interface DashboardDTO {
@@ -144,3 +144,14 @@ export interface AIToolsDTO {
 }
 
 export interface ChatAnswer { text: string; citations: Citation[]; escalate: boolean }
+
+export interface UserProfileDTO {
+  id: string;
+  name: string;
+  firstName: string;
+  email: string;
+  role: string;
+  phone?: string;
+  title?: string;
+  twoFactorEnabled?: boolean;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Menu, Search, Settings, ShieldCheck } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Search, Settings, ShieldCheck, User } from "lucide-react";
 import avatar from "../assets/avatar.jpg";
 import { useApp } from "../context/AppContext";
 import { useDismiss, useMediaQuery } from "../hooks/hooks";
@@ -7,7 +7,8 @@ import { useRealtime } from "../realtime/RealtimeProvider";
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
 import { TenantSwitcher } from "./TenantSwitcher";
-import { Avatar, StatusIndicator } from "./ui";
+import { Avatar, Badge, StatusIndicator } from "./ui";
+import { subscribeMockStatus } from "../api/client";
 
 function ConnectionPopover() {
   const rt = useRealtime();
@@ -28,12 +29,15 @@ function ConnectionPopover() {
 }
 
 export function TopHeader() {
-  const { setCollapsed, setDrawerOpen, drawerOpen, collapsed, tenant, navigate } = useApp();
+  const { setCollapsed, setDrawerOpen, drawerOpen, collapsed, tenant, navigate, user, signOut, setAuthModalOpen } = useApp();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [menu, setMenu] = useState(false);
+  const [mockActive, setMockActive] = useState(false);
   const menuRef = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const [q, setQ] = useState("");
   const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => subscribeMockStatus(setMockActive), []);
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -65,6 +69,11 @@ export function TopHeader() {
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3 md:ml-0">
         <div className="hidden 2xl:block"><TenantSwitcher /></div>
+        {mockActive && (
+          <Badge tone="warn" dot className="hidden sm:inline-flex animate-pulse text-[11px] font-bold">
+            DEMO / MOCK MODE
+          </Badge>
+        )}
         <div className="group relative hidden sm:block">
           <button type="button" aria-label="System status: online. Show connection details" className="rounded-full">
             <StatusIndicator pill status="online" label="System Online" />
@@ -75,23 +84,24 @@ export function TopHeader() {
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}
             className="flex h-14 items-center gap-3 rounded-xl px-2 text-left transition hover:bg-primary/10">
-            <Avatar name="Shafaan" src={avatar} size={44} />
+            <Avatar name={user.name} src={avatar} size={44} />
             <span className="hidden leading-tight lg:block">
-              <span className="block text-[15px] font-semibold">Shafaan Tariq</span>
-              <span className="block text-xs text-mute">Admin</span>
+              <span className="block text-[15px] font-semibold">{user.name}</span>
+              <span className="block text-xs text-mute">{user.role}</span>
             </span>
             <ChevronDown size={18} className="hidden text-ink sm:block" aria-hidden="true" />
           </button>
           {menu && (
             <div role="menu" className="panel absolute right-0 top-16 z-50 w-64 bg-card p-2 animate-fade-up">
               <div className="border-b border-line px-3 pb-3 pt-2">
-                <p className="text-sm font-semibold">Shafaan Tariq</p>
-                <p className="text-xs text-mute">shafaan@acme-store.com · Admin</p>
+                <p className="text-sm font-semibold">{user.name}</p>
+                <p className="text-xs text-mute">{user.email} · {user.role}</p>
                 <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] text-primary"><ShieldCheck size={12} aria-hidden="true" />Tenant: {tenant.name}</p>
               </div>
               <div className="border-b border-line p-2"><TenantSwitcher variant="list" onSelected={() => setMenu(false)} /></div>
-              <button role="menuitem" type="button" onClick={() => { navigate("settings"); setMenu(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-white/5"><Settings size={15} aria-hidden="true" />Account settings</button>
-              <button role="menuitem" type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger hover:bg-danger/10"><LogOut size={15} aria-hidden="true" />Sign out</button>
+              <button role="menuitem" type="button" onClick={() => { navigate("settings", "Account"); setMenu(false); }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-white/5 transition"><Settings size={15} aria-hidden="true" />Account settings</button>
+              <button role="menuitem" type="button" onClick={() => { setAuthModalOpen(true); setMenu(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-white/5 transition"><User size={15} aria-hidden="true" />Switch user account</button>
+              <button role="menuitem" type="button" onClick={() => { signOut(); setMenu(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger hover:bg-danger/10 transition"><LogOut size={15} aria-hidden="true" />Sign out</button>
             </div>
           )}
         </div>

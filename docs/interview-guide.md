@@ -5,12 +5,12 @@ This guide provides direct, senior-level explanations for explaining the archite
 ---
 
 ## 1. 60-Second Elevator Pitch
-> *"AI SupportPro is a multi-tenant AI customer support SaaS engineered to solve the hallucination and governance challenges of conversational AI in business. Instead of relying on open-ended chatbots, it uses a deterministic RAG pipeline where every response is strictly grounded in authorized company documentation with verifiable citations. When customer queries involve complex disputes, refund claims, or low retrieval confidence, our rule-based escalation engine automatically flags the session, generates a prioritized support ticket, and hands over context to human agents with zero context loss. It features a Next.js frontend, a FastAPI/SQLAlchemy async backend, and dual-mode vector support with PostgreSQL+pgvector and standalone local fallbacks."*
+> *"AI SupportPro is a multi-tenant AI customer support SaaS engineered to solve the hallucination and governance challenges of conversational AI in business. Instead of relying on open-ended chatbots, it uses a deterministic RAG pipeline where every response is strictly grounded in authorized company documentation with verifiable citations. When customer queries involve complex disputes, refund claims, or low retrieval confidence, our rule-based escalation engine automatically flags the session, generates a prioritized support ticket, and hands over context to human agents with zero context loss. It features a Vite 7 + React 19 frontend, a FastAPI/SQLAlchemy async backend, and dual-mode vector support with PostgreSQL+pgvector and standalone local fallbacks."*
 
 ---
 
 ## 2. 3-Minute Architectural Deep-Dive
-1. **Frontend Layer (Next.js 14 / TypeScript):**
+1. **Frontend Layer (Vite 7 / React 19 / TypeScript):**
    - Implements both the authenticated admin SaaS portal and the embeddable customer chat widget.
    - Embeddable widget communicates with the backend exclusively via public tenant widget keys (`wgt_...`), preventing private API secret exposure in the browser DOM.
 2. **Backend & AI Orchestration (Python 3.11 / FastAPI):**
@@ -23,7 +23,7 @@ This guide provides direct, senior-level explanations for explaining the archite
 4. **RAG & Vector Retrieval Engine:**
    - Text chunking with sliding token overlap.
    - Provider abstraction supporting OpenAI, Google Gemini, Anthropic, and a zero-dependency deterministic offline mock provider for testability.
-   - Computes cosine similarity scores, enforces similarity thresholds (`SIMILARITY_THRESHOLD = 0.35`), and maps traceable citations back to specific document sections.
+   - Computes cosine similarity scores, enforces similarity thresholds (`SIMILARITY_THRESHOLD = 0.65`), and maps traceable citations back to specific document sections.
 5. **Deterministic Escalation & Ticketing:**
    - Never allows the LLM to make sensitive business decisions on its own.
    - Keyword triggers (e.g., "damaged", "broken", "fraud", "speak to human") and low similarity scores automatically transition conversations to `ESCALATED` and generate support tickets in the database.
@@ -32,8 +32,8 @@ This guide provides direct, senior-level explanations for explaining the archite
 
 ## 3. Key Technical Decisions & Justifications
 
-### Q: Why FastAPI instead of doing everything in Next.js API routes?
-> *"While Next.js route handlers work well for simple CRUD, customer support AI requires heavy document parsing (PDF extraction, text chunking, token counting, vector matrix math, and NLP sanitization). Python provides an unmatched ecosystem for AI pipelines (`pypdf`, `sentence-transformers`, `numpy`, and native vector manipulation) that can be easily extended to Celery/Redis workers without blocking Node.js event loops."*
+### Q: Why a dedicated Python FastAPI backend instead of a pure Node.js fullstack?
+> *"While Node.js works well for simple CRUD, customer support AI requires heavy document parsing (PDF extraction, text chunking, token counting, vector matrix math, and NLP sanitization). Python provides an unmatched ecosystem for AI pipelines (`pypdf`, `sentence-transformers`, `numpy`, and native vector manipulation) that can be easily extended to Celery/Redis workers without blocking event loops."*
 
 ### Q: Why PostgreSQL + pgvector?
 > *"Rather than introducing an external vector-only database (like Pinecone or Qdrant) which causes dual-write synchronization issues and fragmented backups, pgvector keeps business entities (Tenants, Customers, Tickets) and vector embeddings inside the same ACID-compliant relational database. This makes multi-tenant data deletion, transactions, and foreign key cascades trivial and reliable."*
