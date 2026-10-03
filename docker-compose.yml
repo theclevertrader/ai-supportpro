@@ -8,9 +8,9 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-supportpro_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be defined in .env or environment}
-      POSTGRES_DB: ${POSTGRES_DB:-ai_supportpro}
+      POSTGRES_USER: "${POSTGRES_USER:-supportpro_user}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be defined in .env or environment}"
+      POSTGRES_DB: "${POSTGRES_DB:-ai_supportpro}"
     ports:
       - "5432:5432"
     volumes:
@@ -49,15 +49,15 @@ services:
     env_file:
       - .env
     environment:
-      APP_ENV: ${APP_ENV:-production}
-      DEBUG: ${DEBUG:-False}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-supportpro_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_supportpro}}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      AUTH_SECRET: ${AUTH_SECRET:?Error: AUTH_SECRET must be defined in .env or environment}
-      DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-mock}
-      CORS_ORIGINS: ${CORS_ORIGINS:-'["http://localhost:3000","http://127.0.0.1:3000"]'}
-      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
-      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      APP_ENV: "${APP_ENV:-production}"
+      DEBUG: "${DEBUG:-False}"
+      DATABASE_URL: "${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-supportpro_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_supportpro}}"
+      REDIS_URL: "${REDIS_URL:-redis://redis:6379/0}"
+      AUTH_SECRET: "${AUTH_SECRET:?Error: AUTH_SECRET must be defined in .env or environment}"
+      DEFAULT_LLM_PROVIDER: "${DEFAULT_LLM_PROVIDER:-mock}"
+      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}'
+      WHATSAPP_VERIFY_TOKEN: "${WHATSAPP_VERIFY_TOKEN:-}"
+      WHATSAPP_APP_SECRET: "${WHATSAPP_APP_SECRET:-}"
     ports:
       - "8000:8000"
 
@@ -72,7 +72,7 @@ services:
     env_file:
       - .env
     environment:
-      VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
+      VITE_API_BASE: "${VITE_API_BASE:-http://localhost:8000}"
     ports:
       - "3000:3000"
 
